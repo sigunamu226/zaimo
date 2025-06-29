@@ -1,4 +1,4 @@
-import { supabase } from "@/common/supabase";
+import { createClient } from "@/common/supabase/client";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 export const login = async (
@@ -10,6 +10,7 @@ export const login = async (
     return Promise.reject(new Error("Email and password are required"));
   }
 
+  const supabase = createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
