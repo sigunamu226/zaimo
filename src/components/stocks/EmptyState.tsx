@@ -1,8 +1,11 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button, useDisclosure } from "@heroui/react";
+import { AddStockModal } from "./AddStockModal";
 
 export const EmptyState: React.FC = () => {
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="text-6xl mb-4">📦</div>
@@ -15,10 +18,11 @@ export const EmptyState: React.FC = () => {
       <Button
         className="bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white font-bold"
         size="lg"
-        onPress={() => alert("在庫追加機能は後で実装します")}
+        onPress={onOpen}
       >
         + 在庫を追加
       </Button>
+      <AddStockModal isOpen={isOpen} onOpenChange={onOpenChange} />
     </div>
   );
 };
