@@ -119,8 +119,10 @@ export const AddStockModal: React.FC<Props> = ({ isOpen, onOpenChange }) => {
                 onChange={setExpirationDate}
                 classNames={{
                   base: "w-full",
-                  inputWrapper: "bg-black/40 border border-gray-700",
-                  input: "text-white",
+                  inputWrapper: "bg-black/40 border border-gray-700 [&_input]:!text-white",
+                  input: "!text-white",
+                  innerWrapper: "!text-white",
+                  segment: "!text-white",
                   label: "!text-white",
                   selectorButton: "text-gray-400",
                 }}
