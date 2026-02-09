@@ -32,3 +32,28 @@ export const addStock = async (input: {
   revalidatePath("/stocks");
   return {};
 };
+
+export const updateStock = async (
+  id: string,
+  input: {
+    name: string;
+    quantity: number;
+    expiration_date: string;
+  }
+): Promise<{ error?: string }> => {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("stocks")
+    .update({
+      name: input.name,
+      quantity: input.quantity,
+      expiration_date: input.expiration_date,
+    })
+    .eq("id", id);
+  if (error) {
+    console.error("Error updating stock:", error);
+    return { error: error.message };
+  }
+  revalidatePath("/stocks");
+  return {};
+};

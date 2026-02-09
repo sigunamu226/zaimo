@@ -12,11 +12,13 @@ import {
   Tab,
   Button,
   SortDescriptor,
+  useDisclosure,
 } from "@heroui/react";
 import { useState, useMemo } from "react";
 import type { Stock } from "@/common/interface/stock";
 import { ExpirationChip } from "./ExpirationChip";
 import { EmptyState } from "./EmptyState";
+import { EditStockModal } from "./EditStockModal";
 import { formatDate, getExpirationStatus } from "@/common/utils/date";
 
 interface Props {
@@ -30,6 +32,8 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
     column: "expiration_date",
     direction: "ascending",
   });
+  const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   const filteredAndSortedStocks = useMemo(() => {
     let result = stocks;
@@ -153,7 +157,10 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
                       size="sm"
                       variant="light"
                       className="text-white"
-                      onPress={() => alert(`編集機能は後で実装します: ${stock.name}`)}
+                      onPress={() => {
+                        setSelectedStock(stock);
+                        onOpen();
+                      }}
                     >
                       編集
                     </Button>
@@ -172,6 +179,14 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
           })}
         </TableBody>
       </Table>
+
+      {selectedStock && (
+        <EditStockModal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          stock={selectedStock}
+        />
+      )}
     </div>
   );
 };
