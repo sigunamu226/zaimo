@@ -57,3 +57,14 @@ export const updateStock = async (
   revalidatePath("/stocks");
   return {};
 };
+
+export const deleteStock = async (id: string): Promise<{ error?: string }> => {
+  const supabase = await createClient();
+  const { error } = await supabase.from("stocks").delete().eq("id", id);
+  if (error) {
+    console.error("Error deleting stock:", error);
+    return { error: error.message };
+  }
+  revalidatePath("/stocks");
+  return {};
+};
