@@ -19,6 +19,7 @@ import type { Stock } from "@/common/interface/stock";
 import { ExpirationChip } from "./ExpirationChip";
 import { EmptyState } from "./EmptyState";
 import { EditStockModal } from "./EditStockModal";
+import { DeleteStockModal } from "./DeleteStockModal";
 import { formatDate, getExpirationStatus } from "@/common/utils/date";
 
 interface Props {
@@ -34,6 +35,12 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
   });
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [deleteTargetStock, setDeleteTargetStock] = useState<Stock | null>(null);
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onOpenChange: onDeleteOpenChange,
+  } = useDisclosure();
 
   const filteredAndSortedStocks = useMemo(() => {
     let result = stocks;
@@ -168,7 +175,10 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
                       size="sm"
                       variant="light"
                       color="danger"
-                      onPress={() => alert(`削除機能は後で実装します: ${stock.name}`)}
+                      onPress={() => {
+                        setDeleteTargetStock(stock);
+                        onDeleteOpen();
+                      }}
                     >
                       削除
                     </Button>
@@ -185,6 +195,14 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
           isOpen={isOpen}
           onOpenChange={onOpenChange}
           stock={selectedStock}
+        />
+      )}
+
+      {deleteTargetStock && (
+        <DeleteStockModal
+          isOpen={isDeleteOpen}
+          onOpenChange={onDeleteOpenChange}
+          stock={deleteTargetStock}
         />
       )}
     </div>
