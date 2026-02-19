@@ -2,15 +2,16 @@
 
 import { logout } from "@/services/header";
 import {
-  Avatar,
   Dropdown,
   DropdownItem,
   DropdownMenu,
+  DropdownSection,
   DropdownTrigger,
 } from "@heroui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React from "react";
+import { HamburgerIcon, SettingsIcon, LogoutIcon } from "./icons";
 
 export const Header: React.FC = () => {
   const router = useRouter();
@@ -25,21 +26,51 @@ export const Header: React.FC = () => {
         🥦 <span className="hidden sm:inline">Zaimo</span>
       </Link>
 
-      {/* Right: Avatar & Dropdown */}
-      <Dropdown placement="bottom-end">
+      {/* Right: Hamburger Menu & Dropdown */}
+      <Dropdown
+        placement="bottom-end"
+        classNames={{
+          content:
+            "bg-gray-900 border border-white/10 shadow-xl shadow-black/50",
+        }}
+      >
         <DropdownTrigger>
-          <Avatar isBordered size="sm" color="secondary" name="User" />
+          <button className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/20 transition-all duration-200 cursor-pointer">
+            <HamburgerIcon />
+          </button>
         </DropdownTrigger>
-        <DropdownMenu aria-label="User menu" variant="flat">
-          <DropdownItem key="settings">設定</DropdownItem>
-          <DropdownItem
-            key="logout"
-            className="text-danger"
-            color="danger"
-            onPress={() => logout(router)}
+        <DropdownMenu
+          aria-label="User menu"
+          itemClasses={{
+            base: "text-white data-[hover=true]:bg-white/20 data-[hover=true]:text-white",
+          }}
+        >
+          <DropdownSection
+            title="ログイン中"
+            showDivider
+            classNames={{
+              divider: "bg-white/10",
+              heading: "text-gray-400 text-xs font-medium",
+            }}
           >
-            ログアウト
-          </DropdownItem>
+            <DropdownItem key="profile" className="h-10 gap-2" isReadOnly>
+              <p className="font-semibold text-white">User</p>
+            </DropdownItem>
+          </DropdownSection>
+          <DropdownSection>
+            <DropdownItem key="settings" startContent={<SettingsIcon />}>
+              設定
+            </DropdownItem>
+            <DropdownItem
+              key="logout"
+              color="danger"
+              className="text-danger data-[hover=true]:bg-danger/20"
+              startContent={<LogoutIcon />}
+              onPress={() => logout(router)}
+            >
+              ログアウト
+            </DropdownItem>
+          </DropdownSection>
         </DropdownMenu>
       </Dropdown>
     </header>
