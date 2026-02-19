@@ -1,20 +1,20 @@
 "use client";
 
-import { logout } from "@/services/header";
 import {
   Dropdown,
   DropdownItem,
   DropdownMenu,
   DropdownSection,
   DropdownTrigger,
+  useDisclosure,
 } from "@heroui/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import React from "react";
 import { HamburgerIcon, SettingsIcon, LogoutIcon } from "./icons";
+import { LogoutConfirmModal } from "./LogoutConfirmModal";
 
 export const Header: React.FC = () => {
-  const router = useRouter();
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   return (
     <header className="w-full h-16 bg-black/60 backdrop-blur-md text-white flex items-center justify-between px-6 shadow-sm border-b border-white/10 z-50">
@@ -66,13 +66,14 @@ export const Header: React.FC = () => {
               color="danger"
               className="text-danger data-[hover=true]:bg-danger/20"
               startContent={<LogoutIcon />}
-              onPress={() => logout(router)}
+              onPress={onOpen}
             >
               ログアウト
             </DropdownItem>
           </DropdownSection>
         </DropdownMenu>
       </Dropdown>
+      <LogoutConfirmModal isOpen={isOpen} onOpenChange={onOpenChange} />
     </header>
   );
 };
