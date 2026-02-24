@@ -51,7 +51,16 @@ const validateId = (id: string): string | null => {
 
 export const fetchStocks = async (): Promise<Stock[]> => {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("stocks").select("*");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("stocks")
+    .select("*")
+    .eq("user_id", user.id);
   if (error) {
     console.error("Error fetching stocks:", error);
     return [];
@@ -70,10 +79,17 @@ export const addStock = async (input: {
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "認証されていません" };
+  }
   const { error } = await supabase.from("stocks").insert({
     name: input.name.trim(),
     quantity: input.quantity,
     expiration_date: input.expiration_date,
+    user_id: user.id,
   });
   if (error) {
     console.error("Error adding stock:", error);
@@ -101,6 +117,12 @@ export const updateStock = async (
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "認証されていません" };
+  }
   const { error } = await supabase
     .from("stocks")
     .update({
@@ -108,7 +130,8 @@ export const updateStock = async (
       quantity: input.quantity,
       expiration_date: input.expiration_date,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) {
     console.error("Error updating stock:", error);
     return { error: error.message };
@@ -124,7 +147,17 @@ export const deleteStock = async (id: string): Promise<{ error?: string }> => {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("stocks").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "認証されていません" };
+  }
+  const { error } = await supabase
+    .from("stocks")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) {
     console.error("Error deleting stock:", error);
     return { error: error.message };
