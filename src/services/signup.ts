@@ -25,7 +25,9 @@ export const signup = async (
   });
 
   if (error) {
-    return Promise.reject(error);
+    return Promise.reject(
+      new Error("アカウントの作成に失敗しました")
+    );
   }
 
   router.push("/stocks");

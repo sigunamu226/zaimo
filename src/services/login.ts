@@ -16,7 +16,9 @@ export const login = async (
     password,
   });
   if (error) {
-    return Promise.reject(error);
+    return Promise.reject(
+      new Error("メールアドレスまたはパスワードが正しくありません")
+    );
   }
 
   router.push("/stocks");

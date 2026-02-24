@@ -93,7 +93,7 @@ export const addStock = async (input: {
   });
   if (error) {
     console.error("Error adding stock:", error);
-    return { error: error.message };
+    return { error: "在庫の追加に失敗しました" };
   }
   revalidatePath("/stocks");
   return {};
@@ -134,7 +134,7 @@ export const updateStock = async (
     .eq("user_id", user.id);
   if (error) {
     console.error("Error updating stock:", error);
-    return { error: error.message };
+    return { error: "在庫の更新に失敗しました" };
   }
   revalidatePath("/stocks");
   return {};
@@ -160,7 +160,7 @@ export const deleteStock = async (id: string): Promise<{ error?: string }> => {
     .eq("user_id", user.id);
   if (error) {
     console.error("Error deleting stock:", error);
-    return { error: error.message };
+    return { error: "在庫の削除に失敗しました" };
   }
   revalidatePath("/stocks");
   return {};
