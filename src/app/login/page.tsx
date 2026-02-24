@@ -9,9 +9,19 @@ export default function Page() {
   const router = useRouter();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
   const onPress = async () => {
-    await login(router, email, password);
+    setError("");
+    try {
+      await login(router, email, password);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("ログインに失敗しました");
+      }
+    }
   };
 
   return (
@@ -52,6 +62,8 @@ export default function Page() {
             label: "!text-white",
           }}
         />
+
+        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
         <div className="text-right text-sm">
           <a href="#" className="text-[#9945FF] hover:underline">
