@@ -1,5 +1,11 @@
 import "./globals.css";
 import { HeroUIProvider } from "@heroui/react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Zaimo",
+  description: "在庫管理アプリ",
+};
 
 export default function RootLayout({
   children,
