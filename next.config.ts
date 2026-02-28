@@ -20,8 +20,7 @@ const nextConfig: NextConfig = {
         },
         {
           key: "Permissions-Policy",
-          value:
-            "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+          value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
         },
         {
           key: "Strict-Transport-Security",
@@ -34,6 +33,9 @@ const nextConfig: NextConfig = {
       ],
     },
   ],
+  experimental: {
+    optimizePackageImports: ["@heroui/react"],
+  },
 };
 
 export default nextConfig;
