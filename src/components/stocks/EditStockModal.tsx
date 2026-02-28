@@ -10,7 +10,7 @@ import {
   Button,
   DatePicker,
 } from "@heroui/react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { updateStock } from "@/repositories/server/stocks";
 import type { DateValue } from "@internationalized/date";
 import { parseDate } from "@internationalized/date";
@@ -30,12 +30,6 @@ export const EditStockModal: React.FC<Props> = ({ isOpen, onOpenChange, stock })
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    setName(stock.name);
-    setQuantity(stock.quantity.toString());
-    setExpirationDate(parseDate(stock.expiration_date.split('T')[0]));
-  }, [stock]);
 
   const isValid = name.trim() !== "" && quantity !== "" && Number(quantity) >= 1 && expirationDate !== null;
 

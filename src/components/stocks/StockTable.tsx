@@ -199,6 +199,7 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
 
       {selectedStock && (
         <EditStockModal
+          key={selectedStock.id}
           isOpen={isOpen}
           onOpenChange={onOpenChange}
           stock={selectedStock}
