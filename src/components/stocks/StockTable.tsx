@@ -16,10 +16,17 @@ import {
 } from "@heroui/react";
 import { useState, useMemo } from "react";
 import type { Stock } from "@/common/interface/stock";
+import dynamic from "next/dynamic";
 import { ExpirationChip } from "./ExpirationChip";
 import { EmptyState } from "./EmptyState";
-import { EditStockModal } from "./EditStockModal";
-import { DeleteStockModal } from "./DeleteStockModal";
+
+const EditStockModal = dynamic(
+  () => import("./EditStockModal").then((m) => ({ default: m.EditStockModal })),
+);
+const DeleteStockModal = dynamic(
+  () =>
+    import("./DeleteStockModal").then((m) => ({ default: m.DeleteStockModal })),
+);
 import { formatDate, getExpirationStatus } from "@/common/utils/date";
 
 interface Props {

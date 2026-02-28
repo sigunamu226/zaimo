@@ -1,7 +1,11 @@
 "use client";
 
 import { Button, useDisclosure } from "@heroui/react";
-import { AddStockModal } from "./AddStockModal";
+import dynamic from "next/dynamic";
+
+const AddStockModal = dynamic(
+  () => import("./AddStockModal").then((m) => ({ default: m.AddStockModal })),
+);
 
 export const StockHeader: React.FC = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
