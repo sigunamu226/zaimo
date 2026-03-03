@@ -13,9 +13,9 @@ export const EmptyState: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="text-6xl mb-4">📦</div>
-      <h3 className="text-xl font-semibold text-white mb-2">
+      <h2 className="text-xl font-semibold text-white mb-2">
         在庫がありません
-      </h3>
+      </h2>
       <p className="text-gray-400 mb-6">
         最初の在庫を追加して管理を始めましょう
       </p>

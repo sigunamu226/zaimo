@@ -20,12 +20,11 @@ import dynamic from "next/dynamic";
 import { ExpirationChip } from "./ExpirationChip";
 import { EmptyState } from "./EmptyState";
 
-const EditStockModal = dynamic(
-  () => import("./EditStockModal").then((m) => ({ default: m.EditStockModal })),
+const EditStockModal = dynamic(() =>
+  import("./EditStockModal").then((m) => ({ default: m.EditStockModal })),
 );
-const DeleteStockModal = dynamic(
-  () =>
-    import("./DeleteStockModal").then((m) => ({ default: m.DeleteStockModal })),
+const DeleteStockModal = dynamic(() =>
+  import("./DeleteStockModal").then((m) => ({ default: m.DeleteStockModal })),
 );
 import { formatDate, getExpirationStatus } from "@/common/utils/date";
 
@@ -42,7 +41,9 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
   });
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [deleteTargetStock, setDeleteTargetStock] = useState<Stock | null>(null);
+  const [deleteTargetStock, setDeleteTargetStock] = useState<Stock | null>(
+    null,
+  );
   const {
     isOpen: isDeleteOpen,
     onOpen: onDeleteOpen,
@@ -55,7 +56,7 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
     // 検索フィルター
     if (searchQuery) {
       result = result.filter((stock) =>
-        stock.name.toLowerCase().includes(searchQuery.toLowerCase())
+        stock.name.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
 
@@ -99,6 +100,7 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
       {/* フィルターセクション */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <Input
+          aria-label="商品名で検索"
           placeholder="商品名で検索..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
