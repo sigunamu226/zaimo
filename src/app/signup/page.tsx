@@ -11,8 +11,10 @@ export default function Page() {
   const [password, setPassword] = useState<string>("");
   const [passwordConfirm, setPasswordConfirm] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onPress = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError("");
 
     if (!email || !password || !passwordConfirm) {
@@ -30,6 +32,7 @@ export default function Page() {
       return;
     }
 
+    setIsLoading(true);
     try {
       await signup(router, email, password);
     } catch (err) {
@@ -38,6 +41,8 @@ export default function Page() {
       } else {
         setError("アカウントの作成に失敗しました");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -49,65 +54,74 @@ export default function Page() {
           <p className="text-sm text-gray-400">アカウントを作成</p>
         </div>
 
-        <Input
-          type="email"
-          label="メールアドレス"
-          labelPlacement="outside"
-          placeholder="you@example.com"
-          variant="bordered"
-          radius="sm"
-          value={email}
-          onChange={(e) => setEmail(e.currentTarget.value)}
-          classNames={{
-            inputWrapper: "bg-black/40 border border-gray-700 my-6",
-            input: "text-white placeholder-gray-400",
-            label: "!text-white",
-          }}
-        />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Input
+            type="email"
+            name="email"
+            autoComplete="email"
+            label="メールアドレス"
+            labelPlacement="outside"
+            placeholder="you@example.com"
+            variant="bordered"
+            radius="sm"
+            value={email}
+            onChange={(e) => setEmail(e.currentTarget.value)}
+            classNames={{
+              inputWrapper: "bg-black/40 border border-gray-700 my-6",
+              input: "text-white placeholder-gray-400",
+              label: "!text-white",
+            }}
+          />
 
-        <Input
-          type="password"
-          label="パスワード"
-          labelPlacement="outside"
-          placeholder="••••••••"
-          variant="bordered"
-          radius="sm"
-          value={password}
-          onChange={(e) => setPassword(e.currentTarget.value)}
-          classNames={{
-            inputWrapper: "bg-black/40 border border-gray-700 mb-6",
-            input: "text-white placeholder-gray-400",
-            label: "!text-white",
-          }}
-        />
+          <Input
+            type="password"
+            name="password"
+            autoComplete="new-password"
+            label="パスワード"
+            labelPlacement="outside"
+            placeholder="••••••••"
+            variant="bordered"
+            radius="sm"
+            value={password}
+            onChange={(e) => setPassword(e.currentTarget.value)}
+            classNames={{
+              inputWrapper: "bg-black/40 border border-gray-700 mb-6",
+              input: "text-white placeholder-gray-400",
+              label: "!text-white",
+            }}
+          />
 
-        <Input
-          type="password"
-          label="パスワード(確認)"
-          labelPlacement="outside"
-          placeholder="••••••••"
-          variant="bordered"
-          radius="sm"
-          value={passwordConfirm}
-          onChange={(e) => setPasswordConfirm(e.currentTarget.value)}
-          classNames={{
-            inputWrapper: "bg-black/40 border border-gray-700",
-            input: "text-white placeholder-gray-400",
-            label: "!text-white",
-          }}
-        />
+          <Input
+            type="password"
+            name="password-confirm"
+            autoComplete="new-password"
+            label="パスワード(確認)"
+            labelPlacement="outside"
+            placeholder="••••••••"
+            variant="bordered"
+            radius="sm"
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.currentTarget.value)}
+            classNames={{
+              inputWrapper: "bg-black/40 border border-gray-700",
+              input: "text-white placeholder-gray-400",
+              label: "!text-white",
+            }}
+          />
 
-        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+          {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
-        <Button
-          fullWidth
-          size="lg"
-          radius="sm"
-          className="bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white font-bold hover:opacity-90 transition py-3"
-          onPress={onPress}
-        >
-          サインアップ
-        </Button>
+          <Button
+            type="submit"
+            fullWidth
+            size="lg"
+            radius="sm"
+            isLoading={isLoading}
+            className="bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white font-bold hover:opacity-90 transition py-3"
+          >
+            サインアップ
+          </Button>
+        </form>
 
         <p className="text-sm text-center text-gray-400">
           すでにアカウントをお持ちの方はこちら{" "}

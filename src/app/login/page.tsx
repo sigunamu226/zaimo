@@ -10,9 +10,12 @@ export default function Page() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onPress = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError("");
+    setIsLoading(true);
     try {
       await login(router, email, password);
     } catch (err) {
@@ -21,6 +24,8 @@ export default function Page() {
       } else {
         setError("ログインに失敗しました");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -31,55 +36,65 @@ export default function Page() {
           <h1 className="text-3xl font-bold text-white">Zaimo🥦</h1>
         </div>
 
-        <Input
-          type="email"
-          label="メールアドレス"
-          labelPlacement="outside"
-          placeholder="you@example.com"
-          variant="bordered"
-          radius="sm"
-          value={email}
-          onChange={(e) => setEmail(e.currentTarget.value)}
-          classNames={{
-            inputWrapper: "bg-black/40 border border-gray-700 my-6",
-            input: "text-white placeholder-gray-400",
-            label: "!text-white",
-          }}
-        />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Input
+            type="email"
+            name="email"
+            autoComplete="email"
+            label="メールアドレス"
+            labelPlacement="outside"
+            placeholder="you@example.com"
+            variant="bordered"
+            radius="sm"
+            value={email}
+            onChange={(e) => setEmail(e.currentTarget.value)}
+            classNames={{
+              inputWrapper: "bg-black/40 border border-gray-700 my-6",
+              input: "text-white placeholder-gray-400",
+              label: "!text-white",
+            }}
+          />
 
-        <Input
-          type="password"
-          label="パスワード"
-          labelPlacement="outside"
-          placeholder="••••••••"
-          variant="bordered"
-          radius="sm"
-          value={password}
-          onChange={(e) => setPassword(e.currentTarget.value)}
-          classNames={{
-            inputWrapper: "bg-black/40 border border-gray-700",
-            input: "text-white placeholder-gray-400",
-            label: "!text-white",
-          }}
-        />
+          <Input
+            type="password"
+            name="password"
+            autoComplete="current-password"
+            label="パスワード"
+            labelPlacement="outside"
+            placeholder="••••••••"
+            variant="bordered"
+            radius="sm"
+            value={password}
+            onChange={(e) => setPassword(e.currentTarget.value)}
+            classNames={{
+              inputWrapper: "bg-black/40 border border-gray-700",
+              input: "text-white placeholder-gray-400",
+              label: "!text-white",
+            }}
+          />
 
-        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+          {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
-        <div className="text-right text-sm">
-          <a href="#" className="text-[#9945FF] hover:underline">
-            パスワードを忘れた?
-          </a>
-        </div>
+          <div className="text-right text-sm">
+            <button
+              type="button"
+              className="text-[#9945FF] hover:underline cursor-pointer"
+            >
+              パスワードを忘れた?
+            </button>
+          </div>
 
-        <Button
-          fullWidth
-          size="lg"
-          radius="sm"
-          className="bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white font-bold hover:opacity-90 transition py-3"
-          onPress={onPress}
-        >
-          ログイン
-        </Button>
+          <Button
+            type="submit"
+            fullWidth
+            size="lg"
+            radius="sm"
+            isLoading={isLoading}
+            className="bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white font-bold hover:opacity-90 transition py-3"
+          >
+            ログイン
+          </Button>
+        </form>
 
         <p className="text-sm text-center text-gray-400">
           アカウント未登録の方はこちら{" "}

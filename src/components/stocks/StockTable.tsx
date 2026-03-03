@@ -101,7 +101,7 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <Input
           aria-label="商品名で検索"
-          placeholder="商品名で検索..."
+          placeholder="商品名で検索…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           variant="bordered"

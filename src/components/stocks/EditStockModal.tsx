@@ -73,6 +73,7 @@ export const EditStockModal: React.FC<Props> = ({ isOpen, onOpenChange, stock })
                 <p className="text-red-400 text-sm">{error}</p>
               )}
               <Input
+                name="product-name"
                 label="商品名"
                 labelPlacement="outside"
                 placeholder="例: 牛乳"
@@ -88,6 +89,7 @@ export const EditStockModal: React.FC<Props> = ({ isOpen, onOpenChange, stock })
                 }}
               />
               <Input
+                name="quantity"
                 type="number"
                 label="数量"
                 labelPlacement="outside"
@@ -105,6 +107,7 @@ export const EditStockModal: React.FC<Props> = ({ isOpen, onOpenChange, stock })
                 }}
               />
               <DatePicker
+                name="expiration-date"
                 label="消費期限"
                 labelPlacement="outside"
                 variant="bordered"
