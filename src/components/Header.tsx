@@ -39,7 +39,7 @@ export const Header: React.FC = () => {
             aria-label="メニューを開く"
             className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/20 transition-all duration-200 cursor-pointer"
           >
-            <HamburgerIcon />
+            <HamburgerIcon aria-hidden="true" />
           </button>
         </DropdownTrigger>
         <DropdownMenu
@@ -61,14 +61,17 @@ export const Header: React.FC = () => {
             </DropdownItem>
           </DropdownSection>
           <DropdownSection>
-            <DropdownItem key="settings" startContent={<SettingsIcon />}>
+            <DropdownItem
+              key="settings"
+              startContent={<SettingsIcon aria-hidden="true" />}
+            >
               設定
             </DropdownItem>
             <DropdownItem
               key="logout"
               color="danger"
               className="text-danger data-[hover=true]:bg-danger/20"
-              startContent={<LogoutIcon />}
+              startContent={<LogoutIcon aria-hidden="true" />}
               onPress={onOpen}
             >
               ログアウト
