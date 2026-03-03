@@ -35,7 +35,10 @@ export const Header: React.FC = () => {
         }}
       >
         <DropdownTrigger>
-          <button className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/20 transition-all duration-200 cursor-pointer">
+          <button
+            aria-label="メニューを開く"
+            className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/20 transition-all duration-200 cursor-pointer"
+          >
             <HamburgerIcon />
           </button>
         </DropdownTrigger>
