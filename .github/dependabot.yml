@@ -18,6 +18,18 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    # メジャー更新は PR を作らせない。実施コストが大きく、必要になった時点で
+    # 手動で上げる方針 (例: HeroUI v3 は tailwindcss>=4 とセットの UI 移行案件)。
+    #
+    # 注意: `ignore` はセキュリティ更新にも効くため、メジャーでしか直らない CVE が
+    # 出ても Dependabot は PR を作らない。ただし Dependabot *アラート* は
+    # advisory DB から独立して出るので消えない。resolve-dependabot ルーティンは
+    # alerts API を直接読むため検知でき、自動修正できない旨をトラッキング Issue に
+    # 記録する。サイレントに握り潰される経路は無い。
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
