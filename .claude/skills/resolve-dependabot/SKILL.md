@@ -1,6 +1,6 @@
 ---
 name: resolve-dependabot
-description: GitHub Dependabot アラートを洗い出し、`resolutions` を極力避けて大元ライブラリのアップデートで解決する。直接依存は manifest を bump、間接依存は lockfile refresh、内部 pin で更新不能な場合のみ resolutions を例外適用する。commit / push / supersede PR クローズ / 最終再スキャンまで含む。
+description: GitHub Dependabot アラートを洗い出し、`resolutions` を極力避けて大元ライブラリのアップデートで解決する。直接依存は manifest を bump、間接依存は lockfile refresh、内部 pin で更新不能な場合のみ resolutions を例外適用する。commit / push / CI グリーンでの auto-merge / supersede PR クローズ / 最終再スキャンまで含み、アラートが実際に close されるところまで見届ける。
 argument-hint: "[任意: owner/repo] [任意: --autonomous]"
 ---
 
@@ -28,13 +28,79 @@ GitHub Dependabot のオープンアラートを列挙し、**大元ライブラ
 
 Autonomous モード時の固定動作:
 
-- §8 の `AskUserQuestion` (push 方針確認) は **必ずスキップ** し、「ブランチを切って PR オープン」パスを強制する
-- ブランチ名は `fix/dependabot-auto-YYYYMMDD` (UTC 日付ベース)
-- **main への直 push は禁止**。supersede された Dependabot PR のクローズも行わず、人間レビューに委ねる
+- §8 の `AskUserQuestion` (push 方針確認) は **必ずスキップ** し、「ブランチ + PR + auto-merge」パスを強制する
+- ブランチ名は **固定で `chore/dependabot-auto`** (日付を付けない)。既に open な PR があれば同じブランチに push して **その PR を更新**する
+- **main への直 push は禁止**。ただし PR には `gh pr merge --auto --squash` を設定し、CI グリーンで自動的に main へ入る (§0.5)
 - PR 本文に「このスキルが autonomous モードで自動生成したこと」「元アラート番号一覧」を明記
-- §9 の最終再スキャン (open=0 確認) は PR マージ前なので不要。PR 作成完了時点で終了
-- §7 lint/build が失敗したら commit せず、失敗内容を `gh issue create` で Issue 化して終了
+- §7 lint/build が **ローカルで実行できない場合は abort せず**、CI に検証を委ねて PR を作る (§0.6)
+- §7 lint/build を実行できて **失敗した**場合のみ commit せず、§0.7 の単一トラッキング Issue を更新して終了
 - open アラート 0 件なら no-op で `"no open alerts"` ログを残して終了
+
+### §0.5 ループを閉じる仕組み (最重要)
+
+**このスキルの autonomous 実行だけではアラートは閉じない。** PR が main にマージされて初めて Dependabot はアラートを close する。
+過去に約 30 回連続で失敗した原因がこれで、PR を作るだけで誰もマージせず、アラートが無限に滞留した。
+
+ループを閉じるのは以下の 3 点セット。**どれか 1 つでも欠けたら機能しない**ので、実行時に存在を確認すること。
+
+| 部品 | 役割 | 確認コマンド |
+|---|---|---|
+| `.github/workflows/ci.yml` | PR 上で lint/build を検証する | `gh api repos/:owner/:repo/contents/.github/workflows/ci.yml --silent` |
+| main の required status check | CI 未通過の PR がマージされないようにする | `gh api repos/:owner/:repo/branches/main/protection/required_status_checks -q .contexts` |
+| `gh pr merge --auto --squash` | CI グリーンで自動マージ | PR 作成直後に必ず実行 |
+
+欠けている場合は §0.7 の Issue に「どの部品が欠けているか」を明記する。
+
+さらに `.github/workflows/dependabot-auto-merge.yml` が Dependabot 自身の PR を自動マージする。
+**このスキルが動けない環境でもアラートが解消される主経路はこちら**であり、本スキルは Dependabot が扱えないケース
+(resolutions が必要な内部 pin、複数 advisory の同時解決など) の backstop と位置づける。
+
+### §0.6 ネットワーク遮断環境でのフォールバック
+
+実行サンドボックスから npm/yarn レジストリへ到達できず `yarn install` が失敗することがある
+(`registry.npmjs.org:443` への CONNECT が 403、`repo.yarnpkg.com` へ `fetch failed` 等)。
+**この場合に abort してはならない。** 過去の失敗の大半がこれで、毎回 Issue だけ積み上がった。
+
+判定と行動:
+
+```bash
+# レジストリ到達性を先に測る (install より前)
+timeout 30 npm view tar version >/dev/null 2>&1 && echo REACHABLE || echo BLOCKED
+```
+
+- **REACHABLE**: 通常どおり §6 → §7 (lint/build) → §8.5 (PR + auto-merge)
+- **BLOCKED**:
+  1. lockfile を書き換える作業は **できない** (transitive 更新にはレジストリが要る)。無理に試さない。
+  2. 代わりに **Dependabot 自身の PR に auto-merge を付けて回る**。これが唯一そのアラートを閉じられる手段:
+     ```bash
+     gh pr list --state open --author 'app/dependabot' --json number,title \
+       --jq '.[] | "\(.number)\t\(.title)"'
+     # 各 PR に対して:
+     gh pr merge <#> --auto --squash
+     ```
+  3. `package.json` の**直接依存の bump だけ**なら lockfile 無しでも意味を持たないため行わない。
+  4. 1〜2 を実施したうえで §0.7 のトラッキング Issue を更新して終了。**新規 Issue は作らない**。
+
+### §0.7 単一トラッキング Issue (Issue 濫造の禁止)
+
+**実行のたびに新しい Issue を立ててはならない。** 過去に日次で 30 件超の失敗 Issue が生成され、
+本当に対応が要る情報が埋もれた。
+
+固定タイトル `Dependabot auto-resolve: status` の Issue を 1 件だけ使い回す:
+
+```bash
+EXISTING=$(gh issue list --state open --search 'in:title "Dependabot auto-resolve: status"' \
+  --json number --jq '.[0].number')
+
+if [ -n "$EXISTING" ]; then
+  gh issue comment "$EXISTING" --body "$REPORT"    # 追記のみ
+else
+  gh issue create --title "Dependabot auto-resolve: status" --body "$REPORT"
+fi
+```
+
+- 成功して open アラートが 0 になったら、その Issue は `gh issue close` する。
+- 連続失敗時は同じ Issue にコメントを積むだけにし、タイトルは変えない。
 
 ## 1. 役割と禁則
 
@@ -42,8 +108,9 @@ Autonomous モード時の固定動作:
 - **禁則**: 最初から `resolutions` / `overrides` を入れることは禁止。理由・代替検証なしに使うのは NG。
 - **例外条件 (resolutions / overrides 許可)**: 親パッケージが脆弱版を `"x.y.z"` 形式で **厳密ピン** しており、かつ **公開されている全 stable バージョン** で同じピンが続いていることを `npm view` で実測検証した場合のみ。採用時はコミットメッセージに理由を必ず明記する。
 - **push 方針** (interactive モード): 必ずユーザー確認後。`AskUserQuestion` で「main 直 push / feature branch + PR / ローカルのみ」を選ばせる。
-- **push 方針** (autonomous モード): §0 参照。確認スキップで固定「branch + PR」、main 直 push は禁止。
-- 検証 (lint / build) が失敗したら commit/push に進まず即時報告 (autonomous は `gh issue create` で記録)。
+- **push 方針** (autonomous モード): §0 参照。確認スキップで固定ブランチ + PR + auto-merge、main 直 push は禁止。
+- 検証 (lint / build) が失敗したら commit/push に進まず即時報告 (autonomous は §0.7 のトラッキング Issue に追記)。
+- **成果の定義は「PR を作ったこと」ではなく「open アラートが減ったこと」**。PR を作って終わりにしない (§0.5)。
 
 ## 2. Pre-flight チェック
 
@@ -198,28 +265,41 @@ gh pr close <#> --comment "Superseded by <commit-sha> which resolves the same ad
 
 ### §8.5. PR 作成手順 (autonomous 必須、interactive で branch 選択時も同様)
 
-```bash
-DATE=$(date -u +%Y%m%d)
-BRANCH="fix/dependabot-auto-${DATE}"
+**ブランチは固定名を使い回す。** 日付付きブランチを毎回切ると、同じ修正の PR が何本も並走して滞留する
+(実際に #18 / #40 / #43 / #55 が同一の tar 修正で 4 本溜まった)。
 
-# 変更を退避 → ブランチ切替 → 復元 (clean tree なら stash は no-op)
+```bash
+BRANCH="chore/dependabot-auto"
+DATE=$(date -u +%Y-%m-%d)
+
+# 変更を退避 → 最新 main から固定ブランチを作り直す → 復元
 git stash --include-untracked --quiet
-git checkout -b "$BRANCH"
+git fetch origin main
+git checkout -B "$BRANCH" origin/main
 git stash pop --quiet 2>/dev/null || true
 
 # (実際の編集と install は §6 までに完了している前提)
 git add <変更ファイル>
 git commit -m "<§8 のコミットメッセージ>"
-git push -u origin "$BRANCH"
+git push -u --force-with-lease origin "$BRANCH"
+```
 
-gh pr create \
-  --title "fix: auto-resolve Dependabot alerts (${DATE})" \
-  --body "$(cat <<EOF
-このPRは \`resolve-dependabot\` スキルが autonomous モードで自動生成しました。レビュー後にマージしてください。
+既存 PR の有無で分岐する:
+
+```bash
+PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+
+if [ -n "$PR" ]; then
+  gh pr comment "$PR" --body "${DATE}: 最新の main に載せ直し、新規アラートを取り込んで更新しました。"
+else
+  PR=$(gh pr create \
+    --title "chore: auto-resolve Dependabot alerts" \
+    --body "$(cat <<'EOF'
+このPRは `resolve-dependabot` スキルが autonomous モードで自動生成しました。
+CI (`lint + build`) がグリーンになり次第 auto-merge で main に入ります。
 
 ## 解決対象アラート
 - #<番号>: <package> <old>→<new> [<severity>]
-- ...
 
 ## 変更内容
 - 直接依存: ...
@@ -227,17 +307,28 @@ gh pr create \
 - resolutions/overrides 例外: ... (該当時、理由付き)
 
 ## 検証結果
-- \`<pm> lint\` ✓
-- \`<pm> build\` ✓
-
-このPRは自動生成です。CI を通過したらマージしてください。
+- `<pm> lint` ✓ / ✗ (ローカル実行不可の場合は CI に委譲)
+- `<pm> build` ✓ / ✗
 EOF
-)"
+)" --json number --jq .number)
+fi
+
+# ★ ここを飛ばすとループが閉じない (§0.5)
+gh pr merge "$PR" --auto --squash
 ```
 
-PR 作成失敗時 (gh CLI 認証エラー、ブランチ衝突等) は `gh issue create` で失敗記録を残して終了する。
+`gh pr merge --auto` が `Auto-merge is not allowed for this repository` で失敗する場合、
+リポジトリ設定の auto-merge が無効。以下で有効化してから再実行する:
 
-## 9. 最終再スキャン (push した場合のみ)
+```bash
+gh api -X PATCH repos/:owner/:repo -f allow_auto_merge=true
+```
+
+PR 作成失敗時 (gh CLI 認証エラー、ブランチ衝突等) は §0.7 のトラッキング Issue に追記して終了する。
+
+## 9. 最終再スキャン
+
+### Interactive で main に push した場合
 
 push 後、GitHub 側で yarn.lock の再スキャンが走る (通常 15-30s)。
 
@@ -248,6 +339,28 @@ gh api repos/:owner/:repo/dependabot/alerts --jq '[.[] | select(.state == "open"
 
 - **0 でなければ新規アラートを取得して §3〜§8 を繰り返す**。push をトリガーにそれまで隠れていた advisory が浮上することがある (前回セッションで `ws@8.19.0 → 8.20.1` の追加対応が発生した実例あり)。
 - 0 で完了。最終サマリーを出力する。
+
+### Autonomous の場合
+
+auto-merge 待ちなので即時に 0 にはならない。**代わりに「前回の実行がちゃんと着地したか」を毎回検証する**
+— これを見ていなかったために 30 回連続の空振りに気付けなかった。
+
+```bash
+# 1. 固定ブランチの PR が前回から居座っていないか
+gh pr list --head chore/dependabot-auto --state open \
+  --json number,createdAt,autoMergeRequest \
+  --jq '.[] | "PR #\(.number) created=\(.createdAt[0:10]) auto_merge=\(.autoMergeRequest != null)"'
+
+# 2. CI の直近の結果
+gh pr checks "$PR" 2>&1 | tail -5
+```
+
+判定:
+
+- `auto_merge=false` → §8.5 の `gh pr merge --auto --squash` が抜けている。今すぐ設定する。
+- `auto_merge=true` なのに 3 日以上 open → CI が落ち続けているか required check 名が不一致。
+  `gh pr checks` の失敗内容を §0.7 のトラッキング Issue に貼り、**原因を書く** (「失敗しました」だけの報告は禁止)。
+- PR が無く open アラートも 0 → 正常。トラッキング Issue が open なら close する。
 
 ## 10. 最終出力フォーマット
 
