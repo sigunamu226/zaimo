@@ -2,7 +2,15 @@ name: Dependabot auto-merge
 
 # Dependabot が作る PR を CI グリーンで自動マージする。
 # これがルーティンの「最後の一歩」を人手なしで閉じる仕組み。
-# メジャー更新だけは自動マージ対象外にして人間レビューに回す。
+#
+# 自動マージの対象は絞ってある:
+#   - セキュリティ更新 (ghsa-id あり) … major 以外は自動マージ。これが本来の目的
+#   - 通常の版上げ … patch のみ自動マージ
+#   - 通常の minor / 全ての major … 人間レビュー
+#
+# minor を除外しているのは、0.x 系パッケージでは minor が実質破壊的変更になるため
+# (例: @supabase/ssr 0.8→0.12)。このリポジトリにはテストが無く CI は lint + build のみで、
+# 認証まわりのランタイム破壊を検出できない。
 
 on: pull_request
 
@@ -20,17 +28,24 @@ jobs:
         uses: dependabot/fetch-metadata@v2
 
       - name: Enable auto-merge
-        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        if: >-
+          steps.metadata.outputs.update-type != 'version-update:semver-major' &&
+          (steps.metadata.outputs.ghsa-id != '' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-patch')
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr merge --auto --squash "$PR_URL"
 
-      - name: Leave a note on major updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+      - name: Leave a note when review is required
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-major' ||
+          (steps.metadata.outputs.ghsa-id == '' &&
+           steps.metadata.outputs.update-type != 'version-update:semver-patch')
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
         run: |
           gh pr comment "$PR_URL" \
-            --body "メジャー更新のため auto-merge の対象外です。手動でレビュー・マージしてください。"
+            --body "\`${UPDATE_TYPE}\` はセキュリティ更新ではないため auto-merge の対象外です。手動でレビュー・マージしてください。"
