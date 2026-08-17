@@ -9,7 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@heroui/react": "^2.7.5",
+    "@heroui/react": "^3.2.4",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
     "framer-motion": "^12.6.2",
