@@ -1,6 +1,6 @@
 import "./globals.css";
-import { HeroUIProvider } from "@heroui/react";
 import type { Metadata } from "next";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Zaimo",
@@ -30,11 +30,11 @@ export default function RootLayout({
 
           {/* 曲線っぽい円弧 or 半円オーバーレイ（SVGやImage） */}
           <div className="absolute right-[-10%] top-[-10%] w-[300px] h-[300px] bg-gradient-to-tr from-indigo-800 to-purple-600 opacity-30 rounded-full z-0" />
-          <HeroUIProvider>
+          <Providers>
             <div id="main-content" tabIndex={-1}>
               {children}
             </div>
-          </HeroUIProvider>
+          </Providers>
         </div>
       </body>
     </html>
