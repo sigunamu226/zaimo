@@ -58,3 +58,19 @@ src/
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase プロジェクトの URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase の匿名キー |
+
+## 依存関係の自動更新
+
+Dependabot のセキュリティアラートは人手を介さず解消されるように構成しています。
+
+| 部品 | 役割 |
+| --- | --- |
+| `.github/dependabot.yml` | patch/minor と security 更新をグループ化して PR 本数を抑える |
+| `.github/workflows/ci.yml` | PR と main への push で `lint` + `build` を検証 |
+| `.github/workflows/dependabot-auto-merge.yml` | Dependabot PR を CI グリーンで自動マージ（メジャー更新は対象外） |
+| `.claude/skills/resolve-dependabot/` | Dependabot が扱えないケース（`resolutions` が必要な内部 pin 等）の backstop |
+
+main には `lint + build` の required status check が設定されており、CI が通らない限り自動マージは成立しません。
+
+> **注意**: この仕組みは main の required status check と リポジトリの auto-merge 設定に依存します。
+> どちらかが外れると PR がマージされず、アラートが黙って滞留します。
