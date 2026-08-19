@@ -50,6 +50,7 @@ Autonomous モード時の固定動作:
 | `gh pr merge --auto --squash` | CI グリーンで自動マージ | PR 作成直後に必ず実行 |
 
 欠けている場合は §0.7 の Issue に「どの部品が欠けているか」を明記する。
+`gh` が無い環境では §9.1 の REST/MCP 経路で同じ情報を取る。branch protection の読み取りには admin 権限が要るため、取れなければ「確認できなかった」と書く。
 
 さらに `.github/workflows/dependabot-auto-merge.yml` が Dependabot 自身の PR を自動マージする。
 **このスキルが動けない環境でもアラートが解消される主経路はこちら**であり、本スキルは Dependabot が扱えないケース
@@ -78,8 +79,11 @@ timeout 30 npm view tar version >/dev/null 2>&1 && echo REACHABLE || echo BLOCKE
      # 各 PR に対して:
      gh pr merge <#> --auto --squash
      ```
-  3. `package.json` の**直接依存の bump だけ**なら lockfile 無しでも意味を持たないため行わない。
-  4. 1〜2 を実施したうえで §0.7 のトラッキング Issue を更新して終了。**新規 Issue は作らない**。
+  3. **auto-merge を付けた PR の CI 状態を §9 の手順で必ず確認する。**
+     付けただけで「CI が通れば入る」と報告してはならない。既に赤い PR に auto-merge を付けても永久に入らない。
+     2026-08-18 の実行はこれを怠り、前日から型エラーで落ちていた PR #68 を「CI 通過待ち」と報告して 2 日間放置した。
+  4. `package.json` の**直接依存の bump だけ**なら lockfile 無しでは意味を持たないため行わない。
+  5. 1〜3 を実施したうえで §0.7 のトラッキング Issue を更新して終了。**新規 Issue は作らない**。
 
 ### §0.7 単一トラッキング Issue (Issue 濫造の禁止)
 
@@ -118,8 +122,8 @@ fi
 # クリーンか確認 (未コミットがあればユーザーに確認してから進む)
 git status
 
-# gh CLI 認証
-gh auth status
+# gh CLI 認証 (存在しない実行環境もある。無い場合は §9.1 の REST/MCP 経路を使う)
+gh auth status 2>/dev/null || echo "gh CLI unavailable -> use REST/MCP (§9.1)"
 
 # パッケージマネージャ検出 (優先順)
 node -e "console.log(require('./package.json').packageManager || '')"
@@ -175,6 +179,22 @@ done
 
 - 全て同一の脆弱版なら resolutions/overrides を採用してよい。
 - どれか 1 つでも patched 版に上がっていたら、親を bump する方向で再検討。
+
+**同じ例外条件は「重複コピーによる型崩れ」にも適用する。** 脆弱性ではなく、
+同一パッケージが 2 バージョン同居して TypeScript が別物と判定するケース:
+
+```
+Type 'CalendarDate' is not assignable to type 'ZonedDateTime'.
+  Property '#private' in type 'CalendarDate' refers to a different member
+```
+
+`#private` ブランドの不一致はこの症状のサイン。`find node_modules -path "*<pkg>/package.json"`
+でコピー数を数えて確認する。2026-08-19 に `@internationalized/date` で発生し
+(HeroUI が `3.12.0` を厳密ピン / react-aria 系が `^3.12.3` を要求)、
+patch/minor グループ PR の CI が 2 日間落ち続けた。
+
+寄せ先は **依存側の semver 要求を満たせる方**を選ぶ。上の例では HeroUI のピン `3.12.0` ではなく
+`3.12.3` に寄せた。3.12.0 では react-aria の `^3.12.3` を満たせないため。
 
 採用時の書き方:
 
@@ -326,7 +346,7 @@ gh api -X PATCH repos/:owner/:repo -f allow_auto_merge=true
 
 PR 作成失敗時 (gh CLI 認証エラー、ブランチ衝突等) は §0.7 のトラッキング Issue に追記して終了する。
 
-## 9. 最終再スキャン
+## 9. 着地確認と最終再スキャン
 
 ### Interactive で main に push した場合
 
@@ -340,27 +360,68 @@ gh api repos/:owner/:repo/dependabot/alerts --jq '[.[] | select(.state == "open"
 - **0 でなければ新規アラートを取得して §3〜§8 を繰り返す**。push をトリガーにそれまで隠れていた advisory が浮上することがある (前回セッションで `ws@8.19.0 → 8.20.1` の追加対応が発生した実例あり)。
 - 0 で完了。最終サマリーを出力する。
 
-### Autonomous の場合
+### Autonomous の場合 (毎回必須)
 
-auto-merge 待ちなので即時に 0 にはならない。**代わりに「前回の実行がちゃんと着地したか」を毎回検証する**
-— これを見ていなかったために 30 回連続の空振りに気付けなかった。
+auto-merge 待ちなので open アラートは即時に 0 にならない。**代わりに「前回までの PR が本当に着地したか」を毎回検証する。**
+これを見ていなかったために 30 回連続の空振りに気付けなかった。
+
+#### §9.1 `gh` CLI が無い環境でも実行すること
+
+実行環境によっては `gh` CLI が使えず、GitHub 操作が MCP サーバ経由になる。
+**その場合でも着地確認をスキップしてはならない。** 必要なのは以下の「データ」であって `gh` そのものではない。
+
+| 欲しいデータ | REST エンドポイント | `gh` での取り方 |
+|---|---|---|
+| open PR 一覧 | `GET /repos/{owner}/{repo}/pulls?state=open` | `gh pr list --state open --json number,headRefName,user` |
+| PR の head SHA / マージ可否 | `GET /repos/{owner}/{repo}/pulls/{n}` → `head.sha`, `mergeable_state`, `auto_merge` | `gh pr view <n> --json headRefOid,mergeStateStatus,autoMergeRequest` |
+| その SHA のチェック結果 | `GET /repos/{owner}/{repo}/commits/{sha}/check-runs` → `check_runs[].conclusion` | `gh pr checks <n>` |
+| 失敗ジョブのログ | `GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs` | `gh run view <run_id> --log-failed` |
+
+MCP の GitHub ツールしか無い場合は、それで同じエンドポイントを叩く。
+どうしても取得手段が無いときは **「確認できなかった」と §0.7 に明記する**。黙って省略するのは禁止。
+
+#### §9.2 確認対象は自分の PR だけではない
+
+**2 系統ある。両方見ること。**
+
+1. 固定ブランチ `chore/dependabot-auto` の PR — このスキルが作ったもの
+2. **Dependabot 自身が作った open PR** — §0.6 で auto-merge を付けた先
+
+主経路は 2 のほう (§0.5)。1 しか見ていなかったのが 2026-08-18 の見逃しの直接原因で、
+auto-merge を付けた Dependabot PR #68 が前日から赤いことに気付かないまま
+「CI が通れば自動マージされる」と報告した。
+
+#### §9.3 チェック結果は head SHA と突き合わせる
+
+`gh pr checks` / check-runs API は **rebase 前の古い SHA の結果を返すことがある**。
+PR の head SHA とチェックの `head_sha` が一致しない結果で合否を判断してはならない。
+
+- 一致しない → 「CI 未実行 (rebase 直後)」であって、成功でも失敗でもない
+- 2026-08-19 の調査で実際にこれを踏み、2 日前の失敗結果を最新と誤認した
 
 ```bash
-# 1. 固定ブランチの PR が前回から居座っていないか
-gh pr list --head chore/dependabot-auto --state open \
-  --json number,createdAt,autoMergeRequest \
-  --jq '.[] | "PR #\(.number) created=\(.createdAt[0:10]) auto_merge=\(.autoMergeRequest != null)"'
-
-# 2. CI の直近の結果
-gh pr checks "$PR" 2>&1 | tail -5
+HEAD=$(gh pr view <n> --json headRefOid --jq .headRefOid)
+gh api "repos/:owner/:repo/commits/$HEAD/check-runs" \
+  --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion // "-")"'
 ```
 
-判定:
+#### §9.4 判定表
 
-- `auto_merge=false` → §8.5 の `gh pr merge --auto --squash` が抜けている。今すぐ設定する。
-- `auto_merge=true` なのに 3 日以上 open → CI が落ち続けているか required check 名が不一致。
-  `gh pr checks` の失敗内容を §0.7 のトラッキング Issue に貼り、**原因を書く** (「失敗しました」だけの報告は禁止)。
-- PR が無く open アラートも 0 → 正常。トラッキング Issue が open なら close する。
+| 状態 | 判定 | 行動 |
+|---|---|---|
+| open PR なし & open アラート 0 | 正常 | トラッキング Issue が open なら close |
+| `auto_merge` が null | 設定漏れ | 直ちに設定 (§0.5)。これが無いと永久に入らない |
+| チェック `failure` (head SHA 一致) | **本物の失敗** | 失敗ログの要点を §0.7 に貼り、原因を書く |
+| チェック `pending` / SHA 不一致 | 未確定 | 「CI 実行中」と記録。成功と書かない |
+| `mergeable_state` = `dirty` | コンフリクト | Dependabot PR なら `@dependabot rebase` をコメント |
+| `auto_merge` 済みで 3 日以上 open | 詰まり | required check 名の不一致を疑い §0.5 の表と照合 |
+
+#### §9.5 報告の禁止事項
+
+- **赤い PR を伏せて「CI が通れば自動マージされる」と書くのは禁止。**
+  auto-merge を付けた事実と、その PR が今赤いかどうかは別の情報。両方書く。
+- 「失敗しました」だけの報告も禁止。**必ず失敗の中身 (エラーメッセージの要点) を書く。**
+- 確認できなかった項目は「確認できなかった」と書く。推測で「おそらく正常」と書かない。
 
 ## 10. 最終出力フォーマット
 
@@ -375,4 +436,17 @@ gh pr checks "$PR" 2>&1 | tail -5
 **コミット**: <sha1>, <sha2>
 **閉じた PR**: #<n> (supersede)
 **Open alerts**: 0 ✓
+```
+
+Autonomous 実行では、上記に加えて **§9 の着地確認結果を必ず含める**:
+
+```md
+## 着地確認 (§9)
+
+| PR | 種別 | head | auto-merge | CI (head 一致) | 判定 |
+|---|---|---|---|---|---|
+| #<n> | dependabot / skill | <sha8> | ✅/❌ | success / failure / pending / 未実行 | 着地待ち / **要対応** / 正常 |
+
+- CI が failure の場合はここに原因を書く: <エラーの要点>
+- 確認できなかった項目: <あれば明記。無ければ「なし」>
 ```
