@@ -1,0 +1,133 @@
+name: Dependabot auto-resolve
+
+# Anthropic Routine から移設した Dependabot アラート解決。
+#
+# 移設の理由: ルーティンの実行サンドボックスは npm レジストリにも
+# Dependabot alerts API にも到達できず、13 日間「確認できなかった」を繰り返して
+# 一度も修正を着地させられなかった (ルーティン作の PR 5 本中マージ 0 本)。
+# Actions ランナーなら両方に到達できるため、スキルはそのままで実行環境だけ移す。
+#
+# 構成:
+#   detect  … 毎日走る。安価。アラート 0 件なら以降を起動しないのでエージェント費用ゼロ
+#   resolve … アラート 1 件以上のときだけエージェントを起動し、
+#             .claude/skills/resolve-dependabot を autonomous モードで実行する
+#   notify  … API キー未設定でアラートがある場合に人間へ知らせる
+
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  security-events: read
+
+concurrency:
+  group: dependabot-auto-resolve
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: detect open alerts
+    runs-on: ubuntu-latest
+    outputs:
+      count: ${{ steps.alerts.outputs.count }}
+      summary: ${{ steps.alerts.outputs.summary }}
+      has_key: ${{ steps.key.outputs.has_key }}
+    steps:
+      - name: Count open Dependabot alerts
+        id: alerts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! raw=$(gh api "repos/$REPO/dependabot/alerts?state=open&per_page=100" 2>&1); then
+            echo "::error::Dependabot alerts API に到達できませんでした。GITHUB_TOKEN の権限を確認してください。"
+            echo "$raw" | head -5
+            exit 1
+          fi
+          count=$(echo "$raw" | jq 'length')
+          summary=$(echo "$raw" | jq -r '[.[] | "#\(.number) \(.security_advisory.severity) \(.dependency.package.name) -> \(.security_vulnerability.first_patched_version.identifier // "none")"] | join("\n")')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          {
+            echo "summary<<ALERTS_EOF"
+            echo "$summary"
+            echo "ALERTS_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "open alerts: $count"
+          if [ "$count" -gt 0 ]; then echo "$summary"; fi
+
+      - name: Check whether an API key is configured
+        id: key
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ANTHROPIC_API_KEY 未設定のためエージェントによる自動修正は行いません。"
+          fi
+
+  resolve:
+    name: resolve with agent
+    needs: detect
+    if: needs.detect.outputs.count != '0' && needs.detect.outputs.has_key == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: yarn
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Run the resolve-dependabot skill
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: --allowed-tools "Bash,Read,Write,Edit,Glob,Grep"
+          prompt: |
+            autonomous mode / routine 実行です。人間は居ません。
+
+            リポジトリ内の `.claude/skills/resolve-dependabot/SKILL.md` を読み、
+            その手順を autonomous モード (§0) で実行してください。
+
+            この実行環境は従来のルーティンと違い、npm レジストリにも
+            Dependabot alerts API にも到達できます。§0.6 の BLOCKED 経路ではなく
+            通常経路 (§6 適用 → §7 lint/build → §8.5 PR + auto-merge) を使ってください。
+
+            現在の open アラート ${{ needs.detect.outputs.count }} 件:
+            ${{ needs.detect.outputs.summary }}
+
+            終了時は §10 のフォーマットで、§9 の着地確認を必ず含めて報告してください。
+
+  notify:
+    name: notify (no API key)
+    needs: detect
+    if: needs.detect.outputs.count != '0' && needs.detect.outputs.has_key != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open or update the tracking issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          COUNT: ${{ needs.detect.outputs.count }}
+          SUMMARY: ${{ needs.detect.outputs.summary }}
+        run: |
+          set -euo pipefail
+          TITLE="Dependabot auto-resolve: status"
+          BODY=$(printf '## %s — open アラート %s 件\n\n```\n%s\n```\n\n`ANTHROPIC_API_KEY` が未設定のため自動修正は実行していません。\nローカルで `/resolve-dependabot` を実行するか、シークレットを設定してください。\n' "$(date -u +%Y-%m-%d)" "$COUNT" "$SUMMARY")
+          EXISTING=$(gh issue list --repo "$REPO" --state open --search "in:title \"$TITLE\"" --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$REPO" --body "$BODY"
+          else
+            gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY"
+          fi
