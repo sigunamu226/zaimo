@@ -294,15 +294,42 @@ DATE=$(date -u +%Y-%m-%d)
 
 # 変更を退避 → 最新 main から固定ブランチを作り直す → 復元
 git stash --include-untracked --quiet
-git fetch origin main
+git fetch --prune origin          # ★ --prune 必須 (下記の落とし穴)
 git checkout -B "$BRANCH" origin/main
 git stash pop --quiet 2>/dev/null || true
 
 # (実際の編集と install は §6 までに完了している前提)
 git add <変更ファイル>
 git commit -m "<§8 のコミットメッセージ>"
-git push -u --force-with-lease origin "$BRANCH"
+
+# リモートに同名ブランチが在るかで push を切り替える
+if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+  git push -u --force-with-lease origin "$BRANCH"   # 既存ブランチを載せ直す
+else
+  git push -u origin "$BRANCH"                      # 新規作成。force は不要かつ有害
+fi
 ```
+
+#### ⚠️ `--force-with-lease` が `stale info` で失敗する
+
+**`git fetch` に `--prune` を付けないと、この固定ブランチ運用では毎回ここで止まる。**
+
+リポジトリは `delete_branch_on_merge=true` なので、PR がマージされるとリモートの
+`chore/dependabot-auto` は削除される。しかしローカルには
+`refs/remotes/origin/chore/dependabot-auto` が残ったままになる。
+次の実行で `--force-with-lease` はこの古い追跡参照とリモートの実状態を照合し、
+食い違うため `! [rejected] ... (stale info)` で拒否する。
+
+```bash
+# 症状の確認
+git ls-remote --heads origin chore/dependabot-auto        # 空 = リモートに無い
+git for-each-ref refs/remotes/origin/chore/dependabot-auto # 在る = 古い参照が残存
+```
+
+`git fetch --prune origin` で古い参照を落とせば解消する。
+さらにリモートにブランチが無い状態では `--force-with-lease` 自体が不適切
+(守るべき既存 ref が無い) なので、上のコードのように新規作成時は素の
+`git push` に切り替える。2026-09-03 の実行で実際に踏んだ。
 
 既存 PR の有無で分岐する:
 
