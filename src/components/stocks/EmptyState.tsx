@@ -20,7 +20,7 @@ export const EmptyState: React.FC = () => {
         最初の在庫を追加して管理を始めましょう
       </p>
       <Button
-        className="bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white font-bold"
+        className="bg-linear-to-r/srgb from-[#9945FF] to-[#14F195] text-white font-bold"
         size="lg"
         onPress={onOpen}
       >
