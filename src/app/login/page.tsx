@@ -50,7 +50,7 @@ export default function Page() {
             onChange={(e) => setEmail(e.currentTarget.value)}
             classNames={{
               inputWrapper: "bg-black/40 border border-gray-700 my-6",
-              input: "text-white placeholder-gray-400",
+              input: "text-white placeholder:text-gray-400",
               label: "!text-white",
             }}
           />
@@ -68,7 +68,7 @@ export default function Page() {
             onChange={(e) => setPassword(e.currentTarget.value)}
             classNames={{
               inputWrapper: "bg-black/40 border border-gray-700",
-              input: "text-white placeholder-gray-400",
+              input: "text-white placeholder:text-gray-400",
               label: "!text-white",
             }}
           />
@@ -90,7 +90,7 @@ export default function Page() {
             size="lg"
             radius="sm"
             isLoading={isLoading}
-            className="bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white font-bold hover:opacity-90 transition py-3"
+            className="bg-linear-to-r/srgb from-[#9945FF] to-[#14F195] text-white font-bold hover:opacity-90 transition py-3"
           >
             ログイン
           </Button>

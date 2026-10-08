@@ -84,7 +84,7 @@ export const EditStockModal: React.FC<Props> = ({ isOpen, onOpenChange, stock })
                 onChange={(e) => setName(e.target.value)}
                 classNames={{
                   inputWrapper: "bg-black/40 border border-gray-700",
-                  input: "text-white placeholder-gray-400",
+                  input: "text-white placeholder:text-gray-400",
                   label: "!text-white",
                 }}
               />
@@ -102,7 +102,7 @@ export const EditStockModal: React.FC<Props> = ({ isOpen, onOpenChange, stock })
                 onChange={(e) => setQuantity(e.target.value)}
                 classNames={{
                   inputWrapper: "bg-black/40 border border-gray-700",
-                  input: "text-white placeholder-gray-400",
+                  input: "text-white placeholder:text-gray-400",
                   label: "!text-white",
                 }}
               />
@@ -134,7 +134,7 @@ export const EditStockModal: React.FC<Props> = ({ isOpen, onOpenChange, stock })
                 キャンセル
               </Button>
               <Button
-                className="bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white font-bold"
+                className="bg-linear-to-r/srgb from-[#9945FF] to-[#14F195] text-white font-bold"
                 isDisabled={!isValid}
                 isLoading={isSubmitting}
                 onPress={() => handleSubmit(onClose)}

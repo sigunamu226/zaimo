@@ -109,7 +109,7 @@ export const StockTable: React.FC<Props> = ({ stocks }) => {
           className="max-w-xs"
           classNames={{
             inputWrapper: "bg-black/40 border-gray-700",
-            input: "text-white placeholder-gray-400",
+            input: "text-white placeholder:text-gray-400",
           }}
         />
 

@@ -17,7 +17,7 @@ export const Header: React.FC = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   return (
-    <header className="w-full h-16 bg-black/60 backdrop-blur-md text-white flex items-center justify-between px-6 shadow-sm border-b border-white/10 z-50">
+    <header className="w-full h-16 bg-black/60 backdrop-blur-md text-white flex items-center justify-between px-6 shadow-xs border-b border-white/10 z-50">
       {/* Left: Logo */}
       <Link
         href="/stocks"
@@ -37,7 +37,7 @@ export const Header: React.FC = () => {
         <DropdownTrigger>
           <button
             aria-label="メニューを開く"
-            className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/20 transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+            className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/20 transition-colors duration-200 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-purple-500"
           >
             <HamburgerIcon />
           </button>
